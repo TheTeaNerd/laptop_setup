@@ -120,6 +120,11 @@ setup_dir_colors() {
     fi
 }
 
+if [[ "$OSTYPE" != "darwin"* ]]; then
+    echo 'This is not a Mac laptop. Exiting.'
+    exit 1
+fi
+
 install_brew
 brew_install
 install_rvm
@@ -127,3 +132,4 @@ install_oh_my_zsh
 setup_dir_colors
 
 echo "Done"
+exit 0
