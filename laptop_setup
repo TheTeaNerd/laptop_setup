@@ -5,53 +5,51 @@ install_brew() {
     if [ -f /usr/local/bin/brew ]
     then
         echo "Homebrew is installed"
+        echo "Cleaning up..."
+        brew cleanup
+        echo "Updating..."
+        brew update || brew update
+        echo "Running Doctor..."
+        brew doctor
+        echo "Upgrading..."
+        brew upgrade
     else
+        echo "Installing Homebrew"
         /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
     fi
 }
 
 brew_install() {
-    formulae="
-      coreutils
-      git
-      git-quick-stats
-      gnupg
-      htop
-      imagemagick
-      nmap
-      openssl
-      redis
-      shellcheck
-      sloccount
-      speedtest-cli
-      the_platinum_searcher
-      tree
-      vim
-      zlib
-      zsh
-      zsh-syntax-highlighting
-    "
-    for formula in $formulae
-    do
-        brew install $formula || brew upgrade $formula
-    done
-
-    brew cask install iterm2
-    brew cask install docker
-
-    if [ ! -d /Applications/Slack.app ]
-    then
-        brew cask install slack
-    fi
-
-    if [ ! -d /Applications/Spotify.app ]
-    then
-        brew cask install spotify
-    fi
+    echo "Installing preferred packages..."
+    brew bundle --file=- <<-EOS
+        brew "coreutils"
+        brew "git"
+        brew "git-quick-stats"
+        brew "gnupg"
+        brew "htop"
+        brew "imagemagick"
+        brew "nmap"
+        brew "openssl"
+        brew "redis"
+        brew "shellcheck"
+        brew "speedtest-cli"
+        brew "the_platinum_searcher"
+        brew "tree"
+        brew "vim"
+        brew "zlib"
+        brew "zsh"
+        brew "zsh-syntax-highlighting"
+        cask "iterm2"
+        cask "docker"
+        cask "slack"
+        cask "spotify"
+EOS
 }
 
 install_rvm() {
-    gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
+    echo "Installing RVM..."
+
+    gpg --keyserver hkp://ipv4.pool.sks-keyservers.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
     echo rvm_auto_reload_flag=1 >> ~/.rvmrc
     \curl -sSL https://get.rvm.io | bash -s stable
 
