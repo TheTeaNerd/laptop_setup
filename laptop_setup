@@ -1,74 +1,86 @@
 #!/bin/bash
 
-install_brew() {
-    if [ -f /usr/local/bin/brew ]
-    then
-        echo "Homebrew is installed"
-        echo "Cleaning up..."
-        brew cleanup
-        echo "Updating..."
-        brew update || brew update
-        echo "Running Doctor..."
-        brew doctor
-        echo "Upgrading..."
-        brew upgrade
-    else
-        echo "Installing Homebrew"
-        /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+switch_shell() {
+    local shell=$(finger $USER | grep 'Shell:*' | cut -f3 -d ":")
+    if [[ $(basename "${shell}") != 'zsh' ]]; then
+        echo "Changing your shell to Zsh"
+        chsh -s $(which zsh)
     fi
 }
 
-brew_install() {
-    echo "Installing preferred packages..."
-    brew bundle --file=- <<-EOS
-        brew "coreutils"
-        brew "git"
-        brew "git-quick-stats"
-        brew "gnupg"
-        brew "htop"
-        brew "imagemagick"
-        brew "nmap"
-        brew "openssl"
-        brew "redis"
-        brew "shellcheck"
-        brew "speedtest-cli"
-        brew "the_platinum_searcher"
-        brew "tree"
-        brew "vim"
-        brew "zlib"
-        brew "zsh"
-        brew "zsh-syntax-highlighting"
-        cask "iterm2"
-        cask "docker"
-        cask "slack"
-        cask "spotify"
-        tap "sambadevi/powerlevel9k"
-        brew "powerlevel9k"
-        tap "homebrew/cask-fonts"
-        cask "font-hack-nerd-font"
-EOS
+install_brew() {
+    if [[ -f /usr/local/bin/brew ]]; then
+        echo "Homebrew is already installed"
+        echo "Cleaning up..."
+        brew cleanup || exit 1
+        echo "Updating..."
+        brew update || brew update || exit 1
+        echo "Running Doctor..."
+        brew doctor || exit 1
+        echo "Upgrading..."
+        brew upgrade || exit 1
+    else
+        echo "Installing Homebrew"
+        /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" || exit 1
+    fi
 }
 
-install_rvm() {
-    echo "Installing RVM..."
+function brew_install() {
+    echo "Installing preferred packages..."
+    cat << EOF > /tmp/Brewfile
+brew "coreutils"
+brew "git"
+brew "git-quick-stats"
+brew "gnupg"
+brew "htop"
+brew "imagemagick"
+brew "nmap"
+brew "openssl"
+brew "redis"
+brew "shellcheck"
+brew "speedtest-cli"
+brew "the_platinum_searcher"
+brew "tree"
+brew "vim"
+brew "zlib"
+brew "zsh"
+brew "zsh-syntax-highlighting"
+cask "iterm2"
+cask "docker"
+cask "slack"
+cask "spotify"
+tap "sambadevi/powerlevel9k"
+brew "powerlevel9k"
+tap "homebrew/cask-fonts"
+cask "font-hack-nerd-font"
+EOF
+    cd /tmp && brew bundle
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+}
 
-    echo "Looking for GPG keys; this may be slow..."
-    gpg --keyserver hkp://ipv4.pool.sks-keyservers.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
-    echo rvm_auto_reload_flag=1 >> ~/.rvmrc
-    \curl -sSL https://get.rvm.io | bash -s stable
+function install_rvm() {
 
-    if [ -z "${LDFLAGS}" ]
-    then
+    if hash rvm 2>/dev/null; then
+        echo "RVM is already installed"
+    else
+        echo "Installing RVM..."
+        echo "Looking for GPG keys; this may be slow..."
+        gpg --keyserver hkp://ipv4.pool.sks-keyservers.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB || exit 1
+        echo rvm_auto_reload_flag=1 >> ~/.rvmrc
+        \curl -sSL https://get.rvm.io | bash -s stable || exit 1
+    fi
+
+    if [[ -z "${LDFLAGS}" ]]; then
         echo 'export LDFLAGS=-L/usr/local/opt/openssl/lib' >> ~/.zshrc
     fi
 
-    if [ -z "${CPPFLAGS}" ]
-    then
+    if [[ -z "${CPPFLAGS}" ]]; then
         echo 'export CPPFLAGS=-I/usr/local/opt/openssl/include' >> ~/.zshrc
     fi
 
-    if [ -z "${PKG_CONFIG_PATH}" ]
-    then
+    if [[ -z "${PKG_CONFIG_PATH}" ]]; then
         echo 'export PKG_CONFIG_PATH="/usr/local/opt/openssl/lib/pkgconfig"' >> ~/.zshrc
     fi
 
@@ -76,43 +88,37 @@ install_rvm() {
     echo "Latest Ruby is '${latest}'"
 
     rvm list strings | grep $latest >> /dev/null
-    if [ $? -eq 0 ]
-    then
+    if [[ $? -eq 0 ]]; then
         echo "Ruby ${latest} is already installed"
     else
-        rvm install "${latest}" --with-openssl-dir=/usr/local/opt/openssl
+        rvm install "${latest}" --with-openssl-dir=/usr/local/opt/openssl || exit 1
     fi
 }
 
-install_oh_my_zsh() {
-    if [[ -d ~/.oh-my-zsh ]]
-    then
+function install_oh_my_zsh() {
+    if [[ -d ~/.oh-my-zsh ]]; then
         echo "Oh-my-zsh! is already installed"
     else
-        sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)" || exit 1
     fi
 
     grep DEFAULT_USER ~/.zshrc >> /dev/null
-    if [ $? -ne 0 ]
-    then
+    if [[ $? -ne 0 ]]; then
         echo "DEFAULT_USER='david.kennedy'" >> ~/.zshrc
     fi
 
     grep ZSH_THEME ~/.zshrc >> /dev/null
-    if [ $? -ne 0 ]
-    then
+    if [[ $? -ne 0 ]]; then
         echo "ZSH_THEME='powerlevel9k/powerlevel9k'" >> ~/.zshrc
     fi
 
     grep POWERLEVEL9K_MODE ~/.zshrc >> /dev/null
-    if [ $? -ne 0 ]
-    then
+    if [[ $? -ne 0 ]]; then
         echo "POWERLEVEL9K_MODE='nerdfont-complete'" >> ~/.zshrc
     fi
 
     grep POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS ~/.zshrc >> /dev/null
-    if [ $? -ne 0 ]
-    then
+    if [[ $? -ne 0 ]]; then
         echo "(status root_indicator background_jobs)" >> ~/.zshrc
     fi
 }
@@ -124,10 +130,25 @@ setup_dir_colors() {
     fi
 
     grep 'source ~/.dir_colors' ~/.zshrc >> /dev/null
-    if [ $? -ne 0 ]
-    then
+    if [[ $? -ne 0 ]]; then
         echo 'source ~/.dir_colors' >> ~/.zshrc
         echo "alias ls='gls --color=auto'" >> ~/.zshrc
+    fi
+}
+
+function setup_iterm() {
+    # Specify the preferences directory
+defaults write com.googlecode.iterm2.plist PrefsCustomFolder -string "~/dotfiles/iterm2"
+    # Tell iTerm2 to use the custom preferences in the directory
+defaults write com.googlecode.iterm2.plist LoadPrefsFromCustomFolder -bool true
+}
+
+function clone_dotfiles() {
+    if [[ ! -d ~/dotfiles ]]; then
+        git clone git@github.com:TheTeaNerd/dotfiles.git ~/dotfiles || exit 1
+    else
+        cd ~/dotfiles
+        git pull
     fi
 }
 
@@ -139,8 +160,11 @@ fi
 install_brew
 brew_install
 install_rvm
+switch_shell
 install_oh_my_zsh
 setup_dir_colors
+clone_dotfiles
+setup_iterm
 
 echo "Done"
 exit 0
