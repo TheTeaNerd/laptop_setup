@@ -145,11 +145,14 @@ defaults write com.googlecode.iterm2.plist LoadPrefsFromCustomFolder -bool true
 
 function clone_dotfiles() {
     if [[ ! -d ~/dotfiles ]]; then
+        echo 'Cloning dotfiles...'
         git clone git@github.com:TheTeaNerd/dotfiles.git ~/dotfiles || exit 1
     else
+        echo 'Refreshing dotfiles...'
         cd ~/dotfiles
-        git pull
+        git pull || exit 1
     fi
+    ~/dotfiles/setup || exit 1
 }
 
 if [[ "$OSTYPE" != "darwin"* ]]; then
